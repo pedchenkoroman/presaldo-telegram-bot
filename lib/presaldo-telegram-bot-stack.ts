@@ -46,7 +46,7 @@ export class PresaldoTelegramBotStack extends Stack {
 
     new Rule(this, 'scheduleOfCheckBalance', {
       description: 'Run the lambda to check the balance is changed',
-      schedule: Schedule.expression('0 8-22 ? * * *'),
+      schedule: Schedule.expression('cron(0 8-22 * * ? *)'),
       targets: [new LambdaFunction(checkBalance)],
     });
   }
