@@ -44,7 +44,7 @@ export class PresaldoTelegramBotStack extends Stack {
 
     accountsTable.grantReadData(checkBalance);
 
-    new Rule(this, 'checkBalance', {
+    new Rule(this, 'scheduleOfCheckBalance', {
       description: 'Run the lambda to check the balance is changed',
       schedule: Schedule.expression('0 8-22 ? * * *'),
       targets: [new LambdaFunction(checkBalance)],
