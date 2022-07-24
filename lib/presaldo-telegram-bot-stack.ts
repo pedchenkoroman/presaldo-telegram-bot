@@ -27,7 +27,7 @@ export class PresaldoTelegramBotStack extends Stack {
 
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
-        externalModules: ['aws-sdk'],
+        externalModules: ['aws-sdk', '@sparticuz/chrome-aws-lambda'],
       },
       depsLockFilePath: join(__dirname, '../', 'package-lock.json'),
       environment: {
