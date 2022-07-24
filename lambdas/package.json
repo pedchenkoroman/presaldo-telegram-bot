@@ -1,0 +1,14 @@
+{
+  "name": "lambdas",
+  "version": "1.0.0",
+  "description": "",
+  "private": "true",
+  "author": "Roman Pedchenko",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1181.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.6"
+  }
+}

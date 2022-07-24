@@ -1,16 +1,45 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { join } from 'path';
+
+import {
+  NodejsFunction,
+  NodejsFunctionProps,
+} from 'aws-cdk-lib/aws-lambda-nodejs';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 
 export class PresaldoTelegramBotStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const accountsTable = new Table(this, 'accounts', {
+      partitionKey: {
+        name: 'accountId',
+        type: AttributeType.NUMBER,
+      },
+      tableName: 'accounts',
+      removalPolicy: RemovalPolicy.DESTROY,
+      billingMode: BillingMode.PAY_PER_REQUEST,
+    });
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'PresaldoTelegramBotQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    const nodeJsFunctionProps: NodejsFunctionProps = {
+      bundling: {
+        externalModules: ['aws-sdk'],
+      },
+      depsLockFilePath: join(__dirname, '../lambdas', 'package-lock.json'),
+      environment: {
+        PRIMARY_KEY: 'accountId',
+        TABLE_NAME: accountsTable.tableName,
+      },
+      runtime: Runtime.NODEJS_16_X,
+    };
+
+    const checkBalance = new NodejsFunction(this, 'checkBalance', {
+      entry: join(__dirname, '../lambdas', 'check-balance.ts'),
+      ...nodeJsFunctionProps,
+    });
+
+    accountsTable.grantReadData(checkBalance);
   }
 }
