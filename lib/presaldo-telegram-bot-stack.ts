@@ -5,7 +5,7 @@ import {
   NodejsFunction,
   NodejsFunctionProps,
 } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Runtime, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
@@ -29,7 +29,7 @@ export class PresaldoTelegramBotStack extends Stack {
       bundling: {
         externalModules: ['aws-sdk'],
       },
-      depsLockFilePath: join(__dirname, '../lambdas', 'package-lock.json'),
+      depsLockFilePath: join(__dirname, '../', 'package-lock.json'),
       environment: {
         PRIMARY_KEY: 'accountId',
         TABLE_NAME: accountsTable.tableName,
@@ -37,9 +37,17 @@ export class PresaldoTelegramBotStack extends Stack {
       runtime: Runtime.NODEJS_16_X,
     };
 
-    const checkBalance = new NodejsFunction(this, 'checkBalance', {
-      entry: join(__dirname, '../lambdas', 'check-balance.ts'),
+    const puppeteerLayer = LayerVersion.fromLayerVersionArn(
+      this,
+      'p-layer',
+      'arn:aws:lambda:eu-central-1:764866452798:layer:chrome-aws-lambda:31',
+    );
+
+    const checkBalance = new NodejsFunction(this, 'check-balance', {
+      entry: join(__dirname, '/../src/check-balance.ts'),
       ...nodeJsFunctionProps,
+      memorySize: 512,
+      layers: [puppeteerLayer],
     });
 
     accountsTable.grantReadData(checkBalance);
