@@ -8,6 +8,8 @@ import {
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 
 export class PresaldoTelegramBotStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -41,5 +43,11 @@ export class PresaldoTelegramBotStack extends Stack {
     });
 
     accountsTable.grantReadData(checkBalance);
+
+    new Rule(this, 'checkBalance', {
+      description: 'Run the lambda to check the balance is changed',
+      schedule: Schedule.expression('0 8-22 ? * * *'),
+      targets: [new LambdaFunction(checkBalance)],
+    });
   }
 }
