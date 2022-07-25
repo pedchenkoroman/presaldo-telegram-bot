@@ -56,20 +56,16 @@ export const handler = async (): Promise<any> => {
     await page.waitForSelector('#scrollable-content');
 
     const table = await page.$('table.data');
-    const res = await table.$$eval('tr', (node: Array<any>) =>
-      node.map((n) => n.innerText).map((text) => text.split('\t')),
-    );
-    await browser.close();
 
     const takeSecond = ([, second]: any) => second;
     const slice = curry((beginIndex, str) => str.slice(beginIndex));
-    const currentBalance = compose(
-      Number,
-      slice(2),
-      takeSecond,
-      Object.values,
-      fromPairs,
-    )(res);
+
+    const currentBalance = await table
+      .$$eval('tr', (node: Array<any>) =>
+        node.map((n) => n.innerText).map((text) => text.split('\t')),
+      )
+      .then(compose(Number, slice(2), takeSecond, Object.values, fromPairs));
+    await browser.close();
 
     const { balance, accountId, ...rest } = user;
     if (balance === currentBalance) {
@@ -95,7 +91,6 @@ export const handler = async (): Promise<any> => {
     await db.update(params).promise();
     return { statusCode: 204, body: 'The balance was updated' };
   } catch (error) {
-    console.log('error', error);
     return { statusCode: 500, body: JSON.stringify('Something went wrong') };
   }
 };
