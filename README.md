@@ -1,14 +1,17 @@
-# Welcome to your CDK TypeScript project
+# Presaldo telegram bot
 
-This is a blank project for CDK development with TypeScript.
+The main idea of this project is to help my wife manage money that she receives as help from the NL government. It parses
+`https://prepaidsaldo.com` and send to telegram the current balance.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Table of Contents
 
-## Useful commands
+- [Quick start](#install)
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+
+## Install
+1. First and foremost you need to create **aws account**
+2. Clone the repo 
+```shell
+    git clone https://github.com/pedchenkoroman/presaldo-telegram-bot.git
+```
+3.
