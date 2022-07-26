@@ -6,7 +6,7 @@ import {
   NodejsFunctionProps,
 } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
@@ -46,11 +46,12 @@ export class PresaldoTelegramBotStack extends Stack {
     const checkBalance = new NodejsFunction(this, 'check-balance', {
       entry: join(__dirname, '/../src/check-balance.ts'),
       ...nodeJsFunctionProps,
-      memorySize: 512,
+      memorySize: 1024,
+      timeout: Duration.minutes(3),
       layers: [puppeteerLayer],
     });
 
-    accountsTable.grantReadData(checkBalance);
+    accountsTable.grantReadWriteData(checkBalance);
 
     new Rule(this, 'scheduleOfCheckBalance', {
       description: 'Run the lambda to check the balance is changed',
