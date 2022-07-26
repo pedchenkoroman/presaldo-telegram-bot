@@ -14,9 +14,18 @@ export const handler = async (event: any = {}): Promise<any> => {
     };
   }
   const bot = new Telegraf(TOKEN);
-  await bot.telegram.sendMessage(
-    record.dynamodb.NewImage.accountId.N,
-    `Balance was changed and right now equals **${record.dynamodb.NewImage?.balance?.N}** euro`,
-  );
-  await bot.launch();
+
+  try {
+    await bot.telegram.sendMessage(
+      record.dynamodb.NewImage.accountId.N,
+      `Balance was changed and right now equals **${record.dynamodb.NewImage?.balance?.N}** euro`,
+    );
+    await bot.launch();
+  } catch (e) {
+    console.log('error', JSON.stringify(e));
+    return {
+      statusCode: 500,
+      body: JSON.stringify('Something went wrong'),
+    };
+  }
 };
