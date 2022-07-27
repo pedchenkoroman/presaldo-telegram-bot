@@ -33,3 +33,6 @@ The main idea of this project is to help my wife manage money that she receives 
 ```shell
 npx aws cdk deploy
 ```
+7. Due to the fact that the lambda that automatically adds to the dynamo DB account number and security code has not been ready yet.
+   You need to open the AWS  console, navigate to dynamo DB and create a record in the accounts' table where `accountId` - telegram account id,
+   `accountNumber` - the number of your maestro card, `secureCode`  - also the code from your maestro card.
