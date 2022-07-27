@@ -20,6 +20,15 @@ import {
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import {
+  AuthorizationType,
+  IdentitySource,
+  LambdaIntegration,
+  RequestAuthorizer,
+  RestApi,
+} from 'aws-cdk-lib/aws-apigateway';
+
+const BOT_TOKEN = process.env.BOT_TOKEN || '';
 
 export class PresaldoTelegramBotStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -44,7 +53,6 @@ export class PresaldoTelegramBotStack extends Stack {
       environment: {
         PRIMARY_KEY: 'accountId',
         TABLE_NAME: accountsTable.tableName,
-        BOT_TOKEN: process.env.BOT_TOKEN || '',
       },
       runtime: Runtime.NODEJS_16_X,
     };
@@ -66,6 +74,10 @@ export class PresaldoTelegramBotStack extends Stack {
     const changedBalance = new NodejsFunction(this, 'changed-balance', {
       entry: join(__dirname, '/../src/changed-balance.ts'),
       ...nodeJsFunctionProps,
+      memorySize: 128,
+      environment: {
+        BOT_TOKEN,
+      },
     });
 
     changedBalance.addEventSource(
@@ -75,11 +87,43 @@ export class PresaldoTelegramBotStack extends Stack {
       }),
     );
 
+    const telegramHandler = new NodejsFunction(this, 'telegram-handler', {
+      entry: join(__dirname, '/../src/telegram-handler.ts'),
+      ...nodeJsFunctionProps,
+      memorySize: 128,
+      environment: {
+        ...nodeJsFunctionProps.environment,
+        BOT_TOKEN,
+      },
+    });
+
+    const guardRequest = new NodejsFunction(this, 'guard-request', {
+      entry: join(__dirname, '/../src/guard-lambda.ts'),
+      ...nodeJsFunctionProps,
+      memorySize: 128,
+      environment: {
+        BOT_TOKEN,
+      },
+    });
+
+    const api = new RestApi(this, 'telegram-hook-api');
+    const authorizer = new RequestAuthorizer(this, 'guard', {
+      handler: guardRequest,
+      identitySources: [
+        IdentitySource.header('X-Telegram-Bot-Api-Secret-Token'),
+      ],
+    });
+
+    api.root.addMethod('POST', new LambdaIntegration(telegramHandler), {
+      authorizationType: AuthorizationType.CUSTOM,
+      authorizer: authorizer,
+    });
+
     accountsTable.grantReadWriteData(checkBalance);
 
     new Rule(this, 'scheduleOfCheckBalance', {
       description: 'Run the lambda to check the balance is changed',
-      schedule: Schedule.expression('cron(0 12,22 * * ? *)'),
+      schedule: Schedule.expression('cron(0 14,19 * * ? *)'), // UTC
       targets: [new LambdaFunction(checkBalance)],
     });
   }
