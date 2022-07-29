@@ -1,11 +1,14 @@
-import * as AWS from 'aws-sdk';
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { DynamoDB } from '@aws-sdk/client-dynamodb';
 const chromium = require('@sparticuz/chrome-aws-lambda');
 import { fromPairs, curry, compose, propOr, head } from 'ramda';
+import { PutItemCommandInput } from '@aws-sdk/client-dynamodb';
+import { ScheduledHandler } from 'aws-lambda';
 
 const TABLE_NAME = process.env.TABLE_NAME || '';
-const PRIMARY_KEY = process.env.PRIMARY_KEY || '';
+// const PRIMARY_KEY = process.env.PRIMARY_KEY || '';
 
-const db = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDB({ region: process.env.AWS_REGION || '' });
 
 type User = {
   secureCode: string;
@@ -14,14 +17,15 @@ type User = {
   balance: number;
 };
 
-export const handler = async (): Promise<any> => {
+export const handler: ScheduledHandler = async (): Promise<any> => {
   try {
-    const user = (await db
+    const user = (await client
       .scan({
         TableName: TABLE_NAME,
       })
-      .promise()
-      .then(compose(head, propOr([], 'Items')))) as User | undefined;
+      .then(compose(unmarshall, head, propOr([], 'Items')))) as
+      | User
+      | undefined;
 
     if (!user) {
       return { statusCode: 500, body: JSON.stringify('User is empty') };
@@ -67,30 +71,19 @@ export const handler = async (): Promise<any> => {
       .then(compose(Number, slice(2), takeSecond, Object.values, fromPairs));
     await browser.close();
 
-    const { balance, accountId, ...rest } = user;
+    const { balance } = user;
     if (balance === currentBalance) {
       return { statusCode: 204, body: 'Nothing changes' };
     }
-    const params: any = {
+    const params: PutItemCommandInput = {
       TableName: TABLE_NAME,
-      Key: {
-        [PRIMARY_KEY]: accountId,
-      },
-      UpdateExpression: 'set balance = :balance',
-      ExpressionAttributeValues: {},
-      ReturnValues: 'UPDATED_NEW',
+      Item: marshall(user),
     };
-    params.ExpressionAttributeValues[`:balance`] = currentBalance;
 
-    ['secureCode', 'accountNumber'].forEach((property) => {
-      params.UpdateExpression += `, ${property} = :${property}`;
-      // @ts-ignore
-      params.ExpressionAttributeValues[`:${property}`] = rest[property];
-    });
-
-    await db.update(params).promise();
+    await client.putItem(params);
     return { statusCode: 204, body: 'The balance was updated' };
   } catch (error) {
+    console.log(error);
     return { statusCode: 500, body: JSON.stringify('Something went wrong') };
   }
 };

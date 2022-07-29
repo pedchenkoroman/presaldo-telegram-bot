@@ -29,6 +29,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const SECRET_TOKEN = process.env.SECRET_TOKEN || '';
 
 export class PresaldoTelegramBotStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -47,7 +48,7 @@ export class PresaldoTelegramBotStack extends Stack {
 
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
-        externalModules: ['aws-sdk', '@sparticuz/chrome-aws-lambda'],
+        externalModules: ['@sparticuz/chrome-aws-lambda'],
       },
       depsLockFilePath: join(__dirname, '../', 'package-lock.json'),
       environment: {
@@ -103,6 +104,7 @@ export class PresaldoTelegramBotStack extends Stack {
       memorySize: 128,
       environment: {
         BOT_TOKEN,
+        SECRET_TOKEN,
       },
     });
 
