@@ -1,7 +1,7 @@
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { DynamoDB } from '@aws-sdk/client-dynamodb';
 const chromium = require('@sparticuz/chrome-aws-lambda');
-import { fromPairs, curry, compose, propOr, head } from 'ramda';
+import { fromPairs, compose, propOr, head } from 'ramda';
 import { PutItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { ScheduledHandler } from 'aws-lambda';
 
@@ -26,7 +26,7 @@ export const handler: ScheduledHandler = async (): Promise<any> => {
       .then(compose(unmarshall, head, propOr([], 'Items')))) as
       | User
       | undefined;
-
+    console.info('User: ', user);
     if (!user) {
       return { statusCode: 500, body: JSON.stringify('User is empty') };
     }
@@ -62,14 +62,14 @@ export const handler: ScheduledHandler = async (): Promise<any> => {
     const table = await page.$('table.data');
 
     const takeSecond = ([, second]: any) => second;
-    const slice = curry((beginIndex, str) => str.slice(beginIndex));
 
     const currentBalance = await table
       .$$eval('tr', (node: Array<any>) =>
         node.map((n) => n.innerText).map((text) => text.split('\t')),
       )
-      .then(compose(Number, slice(2), takeSecond, Object.values, fromPairs));
+      .then(compose(takeSecond, Object.values, fromPairs));
     await browser.close();
+    console.info('Current balance: ', currentBalance);
 
     const { balance } = user;
     if (balance === currentBalance) {
@@ -77,9 +77,10 @@ export const handler: ScheduledHandler = async (): Promise<any> => {
     }
     const params: PutItemCommandInput = {
       TableName: TABLE_NAME,
-      Item: marshall(user),
+      Item: marshall(Object.assign({}, user, { balance: currentBalance })),
     };
 
+    console.info('Before putItem: ', params.Item);
     await client.putItem(params);
     return { statusCode: 204, body: 'The balance was updated' };
   } catch (error) {
