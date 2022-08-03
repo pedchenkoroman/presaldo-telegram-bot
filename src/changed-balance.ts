@@ -1,15 +1,19 @@
 import { Telegraf } from 'telegraf';
+import { DynamoDBStreamHandler } from 'aws-lambda';
+const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
 const TOKEN = process.env.BOT_TOKEN || '';
 
-export const handler = async (event: any = {}): Promise<any> => {
-  const {
-    Records: [record],
-  } = event;
-  if (record.dynamodb?.NewImage?.accountId?.N) {
-    console.log('Account id does not exist', record.dynamodb);
+export const handler: DynamoDBStreamHandler = async ({
+  Records,
+}): Promise<any> => {
+  const [record] = Records;
+  const { dynamodb } = record;
+  const data = unmarshall(dynamodb?.NewImage);
+  if (!data.accountId) {
+    console.log('Telegram Account id does not exist', data);
     return {
-      statusCode: 500,
+      statusCode: 400,
       body: JSON.stringify('Account id does not exist'),
     };
   }
@@ -17,8 +21,8 @@ export const handler = async (event: any = {}): Promise<any> => {
 
   try {
     await bot.telegram.sendMessage(
-      record.dynamodb.NewImage.accountId.N,
-      `Balance was changed and right now equals **${record.dynamodb.NewImage?.balance?.N}** euro`,
+      data.accountId,
+      `Balance was changed and right now equals **${data.balance}** euro`,
     );
     await bot.launch();
   } catch (e) {
