@@ -1,12 +1,11 @@
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { DynamoDB } from '@aws-sdk/client-dynamodb';
 const chromium = require('@sparticuz/chrome-aws-lambda');
-import { fromPairs, curry, compose, propOr, head } from 'ramda';
+import { fromPairs, compose, propOr, head } from 'ramda';
 import { PutItemCommandInput } from '@aws-sdk/client-dynamodb';
-import { ScheduledHandler } from 'aws-lambda';
+import { EventBridgeHandler } from 'aws-lambda';
 
 const TABLE_NAME = process.env.TABLE_NAME || '';
-// const PRIMARY_KEY = process.env.PRIMARY_KEY || '';
 
 const client = new DynamoDB({ region: process.env.AWS_REGION || '' });
 
@@ -17,8 +16,11 @@ type User = {
   balance: number;
 };
 
-export const handler: ScheduledHandler = async (): Promise<any> => {
+export const handler: EventBridgeHandler<any, any, any> = async (
+  event,
+): Promise<any> => {
   try {
+    console.log('EventBridgeHandler', event);
     const user = (await client
       .scan({
         TableName: TABLE_NAME,
@@ -26,7 +28,7 @@ export const handler: ScheduledHandler = async (): Promise<any> => {
       .then(compose(unmarshall, head, propOr([], 'Items')))) as
       | User
       | undefined;
-
+    console.info('User: ', user);
     if (!user) {
       return { statusCode: 500, body: JSON.stringify('User is empty') };
     }
@@ -62,28 +64,28 @@ export const handler: ScheduledHandler = async (): Promise<any> => {
     const table = await page.$('table.data');
 
     const takeSecond = ([, second]: any) => second;
-    const slice = curry((beginIndex, str) => str.slice(beginIndex));
 
     const currentBalance = await table
       .$$eval('tr', (node: Array<any>) =>
         node.map((n) => n.innerText).map((text) => text.split('\t')),
       )
-      .then(compose(Number, slice(2), takeSecond, Object.values, fromPairs));
+      .then(compose(takeSecond, Object.values, fromPairs));
     await browser.close();
+    console.info('Current balance: ', currentBalance);
 
-    const { balance } = user;
-    if (balance === currentBalance) {
-      return { statusCode: 204, body: 'Nothing changes' };
-    }
+    // const { balance } = user;
+    // if (balance === currentBalance) {
+    //   return { statusCode: 204, body: 'Nothing changes' };
+    // }
     const params: PutItemCommandInput = {
       TableName: TABLE_NAME,
-      Item: marshall(user),
+      Item: marshall(Object.assign({}, user, { balance: currentBalance })),
     };
-
+    console.info('Before put item. Item:', params.Item);
     await client.putItem(params);
     return { statusCode: 204, body: 'The balance was updated' };
   } catch (error) {
-    console.log(error);
+    console.error('Error: ', error);
     return { statusCode: 500, body: JSON.stringify('Something went wrong') };
   }
 };

@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import { Markup, Telegraf } from 'telegraf';
 import { DynamoDBStreamHandler } from 'aws-lambda';
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
@@ -10,8 +10,11 @@ export const handler: DynamoDBStreamHandler = async ({
   const [record] = Records;
   const { dynamodb } = record;
   const data = unmarshall(dynamodb?.NewImage);
+
+  console.info('Stream data', data);
+
   if (!data.accountId) {
-    console.log('Telegram Account id does not exist', data);
+    console.error('Telegram Account id does not exist', data);
     return {
       statusCode: 400,
       body: JSON.stringify('Account id does not exist'),
@@ -23,10 +26,15 @@ export const handler: DynamoDBStreamHandler = async ({
     await bot.telegram.sendMessage(
       data.accountId,
       `Balance was changed and right now equals **${data.balance}** euro`,
+      Markup.inlineKeyboard([
+        Markup.button.url(
+          'Угостить кофе ☕',
+          'https://send.monobank.ua/41RXGqfXuD',
+        ),
+      ]),
     );
-    await bot.launch();
   } catch (e) {
-    console.log('error', JSON.stringify(e));
+    console.error('Error: ', e);
     return {
       statusCode: 500,
       body: JSON.stringify('Something went wrong'),

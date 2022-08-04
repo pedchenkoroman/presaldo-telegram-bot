@@ -27,6 +27,13 @@ import {
   RequestAuthorizer,
   RestApi,
 } from 'aws-cdk-lib/aws-apigateway';
+import {
+  Effect,
+  ManagedPolicy,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const SECRET_TOKEN = process.env.SECRET_TOKEN || '';
@@ -46,6 +53,38 @@ export class PresaldoTelegramBotStack extends Stack {
       stream: StreamViewType.NEW_IMAGE,
     });
 
+    const defaultRole = new Role(this, 'default-role', {
+      assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [
+        ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AWSLambdaBasicExecutionRole',
+        ),
+      ],
+    });
+    const dynamoActionsOnTablePolicyStatement = new PolicyStatement({
+      actions: [
+        'dynamodb:Scan',
+        'dynamodb:Query',
+        'dynamodb:BatchGetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+      ],
+      resources: [accountsTable.tableArn],
+    });
+    defaultRole.addToPolicy(dynamoActionsOnTablePolicyStatement);
+    defaultRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['events:PutEvents'],
+        effect: Effect.ALLOW,
+        resources: [
+          `arn:aws:events:${process.env.AWS_REGION || ''}:${
+            Stack.of(this).account
+          }:event-bus/default`,
+        ],
+      }),
+    );
+
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
         externalModules: ['@sparticuz/chrome-aws-lambda'],
@@ -56,6 +95,7 @@ export class PresaldoTelegramBotStack extends Stack {
         TABLE_NAME: accountsTable.tableName,
       },
       runtime: Runtime.NODEJS_16_X,
+      role: defaultRole,
     };
 
     const puppeteerLayer = LayerVersion.fromLayerVersionArn(
@@ -89,7 +129,7 @@ export class PresaldoTelegramBotStack extends Stack {
     );
 
     const telegramHandler = new NodejsFunction(this, 'telegram-handler', {
-      entry: join(__dirname, '/../src/telegram-handler.ts'),
+      entry: join(__dirname, '/../src/telegram-handler/telegram-handler.ts'),
       ...nodeJsFunctionProps,
       memorySize: 128,
       environment: {
@@ -99,7 +139,7 @@ export class PresaldoTelegramBotStack extends Stack {
     });
 
     const guardRequest = new NodejsFunction(this, 'guard-request', {
-      entry: join(__dirname, '/../src/guard-lambda.ts'),
+      entry: join(__dirname, '/../src/guard-request.ts'),
       ...nodeJsFunctionProps,
       memorySize: 128,
       environment: {
@@ -121,11 +161,18 @@ export class PresaldoTelegramBotStack extends Stack {
       authorizer: authorizer,
     });
 
-    accountsTable.grantReadWriteData(checkBalance);
-
     new Rule(this, 'scheduleOfCheckBalance', {
       description: 'Run the lambda to check the balance is changed',
       schedule: Schedule.expression('cron(0 14,19 * * ? *)'), // UTC
+      targets: [new LambdaFunction(checkBalance)],
+    });
+
+    new Rule(this, 'check-balance-event', {
+      description: 'Event to trigger check balance lambda',
+      eventPattern: {
+        source: ['telegram-handler'],
+        detailType: ['check-balance'],
+      },
       targets: [new LambdaFunction(checkBalance)],
     });
   }
