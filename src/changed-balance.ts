@@ -8,7 +8,10 @@ export const handler: DynamoDBStreamHandler = async ({
   Records,
 }): Promise<any> => {
   const [record] = Records;
-  const { dynamodb } = record;
+  const { dynamodb, eventName } = record;
+  if (eventName === 'INSERT' || eventName === 'REMOVE') {
+    return;
+  }
   const data = unmarshall(dynamodb?.NewImage);
 
   console.info('Stream data', data);
@@ -21,11 +24,17 @@ export const handler: DynamoDBStreamHandler = async ({
     };
   }
   const bot = new Telegraf(TOKEN);
+  const getText = ({ lang, balance }: any) => {
+    if (lang === 'ru') {
+      return `Ваш текущий баланс ${balance}`;
+    }
+    return `Ваш поточний баланс складає ${balance}`;
+  };
 
   try {
     await bot.telegram.sendMessage(
       data.accountId,
-      `Balance was changed and right now equals **${data.balance}** euro`,
+      getText(data),
       Markup.inlineKeyboard([
         Markup.button.url(
           'Угостить кофе ☕',
