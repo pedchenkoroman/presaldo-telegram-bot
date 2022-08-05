@@ -81,7 +81,12 @@ export const handler: EventBridgeHandler<
 
     const params: PutItemCommandInput = {
       TableName: TABLE_NAME,
-      Item: marshall(Object.assign({}, user, { balance: currentBalance })),
+      Item: marshall(
+        Object.assign({}, user, {
+          balance: currentBalance,
+          random: Date.now() * 1000,
+        }),
+      ),
     };
     console.info('Before put item. Item:', params.Item);
     await client.putItem(params);
