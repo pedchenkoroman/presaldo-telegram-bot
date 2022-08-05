@@ -115,6 +115,7 @@ const superWizard = new Scenes.WizardScene(
     }
     ctx.wizard.state.contactData.secureCode = ctx.message.text;
     ctx.wizard.state.contactData.balance = 0;
+    ctx.wizard.state.contactData.random = Date.now() * 1000;
 
     const params: PutItemCommandInput = {
       TableName: TABLE_NAME,
