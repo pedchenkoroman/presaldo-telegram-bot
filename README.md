@@ -39,4 +39,4 @@ npx aws cdk deploy
    `accountNumber` - the number of your maestro card, `secureCode`  - also the code from your maestro card.
 
 ## Schema
-<img src="schema.png">
+<img src="schema.png" alt="architecture schema">
