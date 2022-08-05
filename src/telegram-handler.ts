@@ -140,7 +140,6 @@ bot.use(stage.middleware() as any);
 bot.start((ctx: any) => ctx.scene.enter(DEFAULT_SCENE_ID));
 bot.action('balance', async (ctx) => {
   try {
-    console.log('balance handler', ctx);
     const accountId = ctx.update.callback_query.from.id || '';
     const client = new EventBridge({ region: AWS_REGION });
     const output = await client.putEvents({
@@ -154,11 +153,11 @@ bot.action('balance', async (ctx) => {
     });
     console.log('event output', output);
   } catch (e) {
-    console.log('ERROR:', e);
+    console.log('ERROR:', JSON.stringify(e));
   }
 
   await ctx.reply(
-    'Ваш баланс xxx',
+    'Ваш баланс проверяется....',
     Markup.keyboard([Markup.button.text('Баланс 💰')]).resize(),
   );
 });
@@ -179,7 +178,7 @@ bot.hears('Баланс 💰', async (ctx) => {
     });
     console.log('event output', output);
   } catch (e) {
-    console.log('ERROR:', e);
+    console.log('ERROR:', JSON.stringify(e));
   }
 });
 

@@ -65,7 +65,7 @@ export class PresaldoTelegramBotStack extends Stack {
       actions: [
         'dynamodb:Scan',
         'dynamodb:Query',
-        'dynamodb:BatchGetItem',
+        'dynamodb:GetItem',
         'dynamodb:PutItem',
         'dynamodb:UpdateItem',
         'dynamodb:DeleteItem',
@@ -78,7 +78,7 @@ export class PresaldoTelegramBotStack extends Stack {
         actions: ['events:PutEvents'],
         effect: Effect.ALLOW,
         resources: [
-          `arn:aws:events:${process.env.AWS_REGION || ''}:${
+          `arn:aws:events:${Stack.of(this).region}:${
             Stack.of(this).account
           }:event-bus/default`,
         ],
@@ -129,7 +129,7 @@ export class PresaldoTelegramBotStack extends Stack {
     );
 
     const telegramHandler = new NodejsFunction(this, 'telegram-handler', {
-      entry: join(__dirname, '/../src/telegram-handler/telegram-handler.ts'),
+      entry: join(__dirname, '/../src/telegram-handler.ts'),
       ...nodeJsFunctionProps,
       memorySize: 128,
       environment: {

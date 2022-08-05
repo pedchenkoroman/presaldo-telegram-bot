@@ -1,7 +1,7 @@
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { DynamoDB } from '@aws-sdk/client-dynamodb';
 const chromium = require('@sparticuz/chrome-aws-lambda');
-import { fromPairs, compose, propOr, head } from 'ramda';
+import { fromPairs, compose, propOr } from 'ramda';
 import { PutItemCommandInput } from '@aws-sdk/client-dynamodb';
 import { EventBridgeHandler } from 'aws-lambda';
 
@@ -16,19 +16,26 @@ type User = {
   balance: number;
 };
 
-export const handler: EventBridgeHandler<any, any, any> = async (
-  event,
-): Promise<any> => {
+export const handler: EventBridgeHandler<
+  'check-balance',
+  { accountId: number },
+  any
+> = async (event): Promise<any> => {
   try {
-    console.log('EventBridgeHandler', event);
+    const {
+      detail: { accountId },
+    } = event;
     const user = (await client
-      .scan({
+      .getItem({
         TableName: TABLE_NAME,
+        Key: {
+          accountId: {
+            N: String(accountId),
+          },
+        },
       })
-      .then(compose(unmarshall, head, propOr([], 'Items')))) as
-      | User
-      | undefined;
-    console.info('User: ', user);
+      .then(compose(unmarshall, propOr(null, 'Item')))) as User | null;
+    console.info('User: ', JSON.stringify(user));
     if (!user) {
       return { statusCode: 500, body: JSON.stringify('User is empty') };
     }
@@ -71,12 +78,7 @@ export const handler: EventBridgeHandler<any, any, any> = async (
       )
       .then(compose(takeSecond, Object.values, fromPairs));
     await browser.close();
-    console.info('Current balance: ', currentBalance);
 
-    // const { balance } = user;
-    // if (balance === currentBalance) {
-    //   return { statusCode: 204, body: 'Nothing changes' };
-    // }
     const params: PutItemCommandInput = {
       TableName: TABLE_NAME,
       Item: marshall(Object.assign({}, user, { balance: currentBalance })),
@@ -85,7 +87,7 @@ export const handler: EventBridgeHandler<any, any, any> = async (
     await client.putItem(params);
     return { statusCode: 204, body: 'The balance was updated' };
   } catch (error) {
-    console.error('Error: ', error);
+    console.error('Error: ', JSON.stringify(error));
     return { statusCode: 500, body: JSON.stringify('Something went wrong') };
   }
 };
