@@ -16,7 +16,7 @@ The main idea of this project is to help my wife manage money that she receives 
 ```shell
     git clone https://github.com/pedchenkoroman/presaldo-telegram-bot.git
 ```
-3. Create `.env` file and set `BOT_TOKEN`
+3. Create `.env` file and set `BOT_TOKEN` and `SECRET_TOKEN`
 ```shell
     cp .env.example .env
 ```
@@ -34,9 +34,10 @@ The main idea of this project is to help my wife manage money that she receives 
 ```shell
 npx aws cdk deploy
 ```
-7. Due to the fact that the lambda that automatically adds to the dynamo DB account number and security code has not been ready yet.
-   You need to open the AWS  console, navigate to dynamo DB and create a record in the accounts' table where `accountId` - telegram account id,
-   `accountNumber` - the number of your maestro card, `secureCode`  - also the code from your maestro card.
+7. Last but not least you need to set the link from API gateway to telegram API for getting updates from telegram
+```shell
+   npm run set-weebhook
+```
 
 ## Schema
 <img src="schema.png" alt="architecture schema">
